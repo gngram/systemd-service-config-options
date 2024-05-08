@@ -154,40 +154,143 @@ When access to all physical devices should be disallowed, `PrivateDevices=` may 
 [DeviceAllow](https://www.freedesktop.org/software/systemd/man/systemd.resource-control.html#DeviceAllow=)
 
 
-# Kernel #
-##########
+# Kernel
 
-# ProtectKernelTunables=true;
-# ProtectKernelModules=true;
-# ProtectKernelLogs=true;
+### ProtectKernelTunables
+A boolean argument. Defaults to `off`. If `true`, kernel variables accessible through */proc/sys/*, */sys/*, */proc/sysrq-trigger*, */proc/latency_stats*, */proc/acpi*, */proc/timer_stats*, */proc/fs* and */proc/irq* will be made read-only to all processes of the unit. Usually, tunable kernel variables should be initialized only at boot-time. Few services need to writeto these at runtime; it is hence recommended to turn this on for most services.
+This option is only available for system services.
 
-########
-# Misc #
-########
+[ProtectKernelTunables](https://www.freedesktop.org/software/systemd/man/systemd.exec.html#ProtectKernelTunables=)
 
-# Delegate=false;
-# KeyringMode="private";
-# NoNewPrivileges=true;
-# UMask=077;
-# ProtectHostname=true;
-# ProtectClock=true;
-# ProtectControlGroups=true;
-# RestrictNamespaces=true;
-/* RestrictNamespaces=[
-#"~user"
-#"~pid"
-#"~net"
-#"~uts"
-#"~mnt"
-#"~cgroup"
-#"~ipc"
-]; */
-# LockPersonality=true;
-# MemoryDenyWriteExecute=true;
-# RestrictRealtime=true;
-# RestrictSUIDSGID=true;
-# RemoveIPC=true  
-# SystemCallArchitectures="native";
+
+### ProtectKernelModules
+A boolean argument. Defaults to off. If true, explicit module loading will be denied. This allows module load and unload operations to be turned off on modular kernels.
+It is recommended to turn this on for most services that do not need special file systems or extra kernel modules to work.
+Enabling this option removes `CAP_SYS_MODULE` from the capability bounding set for the unit, and installs a system call filter to block module system calls,
+also `/usr/lib/modules` is made inaccessible.
+This option is only available for system services.
+
+[ProtectKernelModules](https://www.freedesktop.org/software/systemd/man/systemd.exec.html#ProtectKernelModules=)
+
+
+### ProtectKernelLogs
+A boolean argument. Default is off. If true, access to the kernel log ring buffer will be denied.
+It is recommended to turn this on for most services that do not need to read from or write to the kernel log ring buffer. Enabling this option removes CAP_SYSLOG
+from the capability bounding set for this unit, and installs a system call filter to block the syslog(2) system call. The kernel exposes its log buffer to userspace via
+*/dev/kmsg* and */proc/kmsg*. If enabled, these are made inaccessible to all the processes in the unit.
+
+[ProtectKernelLogs](https://www.freedesktop.org/software/systemd/man/systemd.exec.html#ProtectKernelLogs=)
+
+# Misc
+
+### Delegate
+Turns on delegation of further resource control partitioning to processes of the unit. Units where this is enabled may create and manage their own
+private subhierarchy of control groups below the control group of the unit itself. For unprivileged services (i.e. those using the User= setting)
+the unit's control group will be made accessible to the relevant user.
+When enabled the service manager will refrain from manipulating control groups or moving processes below the unit's control group, so that a
+clear concept of ownership is established.
+Takes either a boolean argument or a (possibly empty) list of control group controller names. If true, delegation is turned on, and all supported
+controllers are enabled for the unit, making them available to the unit's processes for management. If false, delegation is turned off entirely.
+
+[Delegate](https://www.freedesktop.org/software/systemd/man/systemd.resource-control.html#Delegate=)
+
+### KeyringMode
+**Options:** `inherit`, `private`, `shared`.
+**Default:** `private` for services of the system service manager and to inherit for non-service units and for services of the user service manager
+Kernel session keyring for the service. If set to inherit no special keyring setup is done, and the kernel's default behaviour is applied.
+If private is used a new session keyring is allocated when a service process is invoked, and it is not linked up with any user keyring.
+This is the recommended setting for system services, as this ensures that multiple services running under the same system user ID do not share their
+key material among each other. If shared is used a new session keyring is allocated as for private, but the user keyring of the user configured
+with `User=` is linked into it, so that keys assigned to the user may be requested by the unit's processes.
+
+[KeyringMode](https://www.freedesktop.org/software/systemd/man/systemd.exec.html#KeyringMode=)
+  
+### NoNewPrivileges
+A boolean argument. Defaults to `false`. If `true`, ensures that the service process and all its children can never gain new privileges through *execve()*. This is the
+simplest and most effective way to ensure that a process and its children can never elevate privileges again. Certain settings override this and ignore the value
+of this setting.
+
+[NoNewPrivileges](https://www.freedesktop.org/software/systemd/man/systemd.exec.html#NoNewPrivileges=)
+
+### UMask
+Controls the file mode creation mask. Takes an access mode in octal notation.  Defaults to 0022 for system units.
+For user units the default value is inherited from the per-user service manager. In order to change the per-user mask for all user services,
+consider setting the UMask= setting of the user's user@.service system service instance.
+
+[UMask](https://www.freedesktop.org/software/systemd/man/systemd.exec.html#UMask=)
+
+### ProtectHostname
+A boolean argument. Defaults to off. When set, sets up a new UTS namespace for the executed processes. In addition, changing hostname or domainname is prevented.
+This option is only available for system services.
+
+[ProtectHostname](https://www.freedesktop.org/software/systemd/man/systemd.exec.html#ProtectHostname=)
+
+
+### ProtectClock
+A boolean argument. Defaults to off. If set, writes to the hardware clock or system clock will be denied.  Enabling this option removes `CAP_SYS_TIME` and `CAP_WAKE_ALARM` from
+the capability bounding set for this unit, installs a system call filter to block calls that can set the clock, and `DeviceAllow=char-rtc r` is implied.
+It is recommended to turn this on for most services that do not need modify the clock or check its state.
+This option is only available for system services.
+
+[ProtectClock](https://www.freedesktop.org/software/systemd/man/systemd.exec.html#ProtectClock=)
+  
+### ProtectControlGroups
+A boolean argument. Defaults to off. If true, the Linux Control Groups (cgroups(7)) hierarchies accessible through /sys/fs/cgroup/ will be made read-only to all processes of the unit.
+It is hence recommended to turn this on for most services.
+This option is only available for system services.
+
+[ProtectControlGroups](https://www.freedesktop.org/software/systemd/man/systemd.exec.html#ProtectControlGroups=)
+
+### RestrictNamespaces
+Boolean argument, or a space-separated list of namespace type identifiers. Defaults to `false`.
+Restricts access to Linux namespace functionality for the processes of this unit. If false, no restrictions on namespace creation and switching are made.
+If `true`, access to any kind of namespacing is prohibited. Otherwise, a space-separated list of namespace type identifiers must be specified, consisting of any combination
+of: `cgroup`, `ipc`, `net`, `mnt`, `pid`, `user`, and `uts`.
+
+[RestrictNamespaces](https://www.freedesktop.org/software/systemd/man/systemd.exec.html#RestrictNamespaces=)
+
+### LockPersonality
+A boolean argument. Defaults to `false`.
+If set, locks down the personality system call so that the kernel execution domain may not be changed from the default or the personality selected with `Personality=` directive.
+This may be useful to improve security, because odd personality emulations may be poorly tested and source of vulnerabilities. If running in user mode, or in system mode,
+but without the `CAP_SYS_ADMIN` capability (e.g. setting `User=`), `NoNewPrivileges=yes` is implied.
+
+[LockPersonality](https://www.freedesktop.org/software/systemd/man/systemd.exec.html#LockPersonality=)
+   
+
+### MemoryDenyWriteExecute
+A boolean argument. Default is `false`,
+If set, attempts to create memory mappings that are writable and executable at the same time, or to change existing memory mappings to become executable, or mapping shared
+memory segments as executable, are prohibited. Specifically, appropriate system call filter is added.
+
+[MemoryDenyWriteExecute](https://www.freedesktop.org/software/systemd/man/systemd.exec.html#MemoryDenyWriteExecute=)
+
+### RestrictRealtime
+A boolean argument. Default is `false`.
+If set, any attempts to enable realtime scheduling in a process of the unit are refused. This restricts access to realtime task scheduling policies such as `SCHED_FIFO`,
+`SCHED_RR` or `SCHED_DEADLINE`. If running in user mode, or in system mode, but without the `CAP_SYS_ADMIN` capability, `NoNewPrivileges=yes` is implied.
+
+[RestrictRealtime](https://www.freedesktop.org/software/systemd/man/systemd.exec.html#RestrictRealtime=)
+
+
+### RestrictSUIDSGID
+A boolean argument. Defaults to `off`. If set, any attempts to set the set-user-ID (SUID) or set-group-ID (SGID) bits on files or directories will be denied. If running in user mode, or in system mode, but without the `CAP_SYS_ADMIN` capability, `NoNewPrivileges=yes` is implied. As the SUID/SGID bits are mechanisms to elevate privileges, and allow users to
+acquire the identity of other users, it is recommended to restrict creation of SUID/SGID files to the few programs that actually require them.
+
+[RestrictSUIDSGID](https://www.freedesktop.org/software/systemd/man/systemd.exec.html#RestrictSUIDSGID=)
+
+### RemoveIPC
+A boolean parameter. Defaults to `off`. If set, all **System V** and **POSIX IPC** objects owned by the user and group the processes of this unit are run as are removed when the unit is stopped.
+This option is only available for system services.
+
+[RemoveIPC](https://www.freedesktop.org/software/systemd/man/systemd.exec.html#RemoveIPC=)
+ 
+### SystemCallArchitectures
+Takes a space-separated list of architecture identifiers to include in the system call filter. If running in user mode, or in system mode, but without the CAP_SYS_ADMIN capability, `NoNewPrivileges=yes` is implied. By default, this option is set to the empty list, i.e. no filtering is applied.
+If this setting is used, processes of this unit will only be permitted to call native system calls, and system calls of the specified architectures.
+
+[SystemCallArchitectures](https://www.freedesktop.org/software/systemd/man/systemd.exec.html#SystemCallArchitectures=)
+  
 # NotifyAccess=false;
 
 
