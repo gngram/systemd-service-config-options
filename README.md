@@ -1,3 +1,5 @@
+This document outlines systemd service configurations that significantly impact a service's exposure. These configurations can be utilized to enhance the security of a systemd service.
+
 # Table Of Contents:
 
 ### Networking
