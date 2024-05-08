@@ -291,14 +291,30 @@ If this setting is used, processes of this unit will only be permitted to call n
 
 [SystemCallArchitectures](https://www.freedesktop.org/software/systemd/man/systemd.exec.html#SystemCallArchitectures=)
   
-# NotifyAccess=false;
+### NotifyAccess
+Controls access to the service status notification socket, as accessible via the `sd_notify()` call. Takes one of `none` (the default), `main`, `exec` or `all`. If `none`, no daemon status updates are accepted from the service processes, all status update messages are ignored. If `main`, only service updates sent from the main process of the service are accepted. If `exec`, only service updates sent from any of the main or control processes originating from one of the `Exec*=` commands are accepted. If `all`, all services updates from all members of the service's control group are accepted. This option should be set to open access to the notification socket when using `Type=notify/Type=notify-reload` or `WatchdogSec=`. If those options are used but `NotifyAccess=` is not configured, it will be implicitly set to main.
+
+[NotifyAccess](https://www.freedesktop.org/software/systemd/man/latest/systemd.service.html#NotifyAccess=)
 
 
-################
-# Capabilities #
-################
+# Capabilities 
 
-#AmbientCapabilities=
+### AmbientCapabilities
+Controls which capabilities to include in the ambient capability set for the executed process. Takes a whitespace-separated list of capability names,
+e.g. `CAP_SYS_ADMIN`, `CAP_DAC_OVERRIDE`, `CAP_SYS_PTRACE`. This option may appear more than once, in which case the ambient capability sets are merged.
+If the list of capabilities is prefixed with "~", all but the listed capabilities will be included, the effect of the assignment inverted.
+If the empty string is assigned to this option, the ambient capability set is reset to the empty capability set, and all prior settings have no effect.
+
+[AmbientCapabilities](https://www.freedesktop.org/software/systemd/man/systemd.exec.html#AmbientCapabilities=)
+
+### CapabilityBoundingSet
+A whitespace-separated list of capability names, e.g. `CAP_SYS_ADMIN`, `CAP_DAC_OVERRIDE`, `CAP_SYS_PTRACE`.
+Controls which capabilities to include in the capability bounding set for the executed process.
+If the list of capabilities is prefixed with "~", all but the listed capabilities will be included, the effect of the assignment inverted.
+This does not affect commands prefixed with "+".
+
+[CapabilityBoundingSet](https://www.freedesktop.org/software/systemd/man/systemd.exec.html#CapabilityBoundingSet=)
+
 CapabilityBoundingSet=[
 # "~CAP_SYS_PACCT"
 # "~CAP_KILL"
