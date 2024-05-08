@@ -1,3 +1,8 @@
+# Table Of Index:
+- [RestrictNetworkInterfaces](#RestrictNetworkInterfaces)
+- [Second Heading](#second-heading)
+- [Third Heading](#third-heading)
+
 # Networking
 
 ### PrivateNetwork
