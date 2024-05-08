@@ -1,4 +1,4 @@
-# Table Of Index:
+# Table Of Contents:
 
 ### Networking
 - [PrivateNetwork](#PrivateNetwork)
