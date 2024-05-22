@@ -63,7 +63,7 @@ This document outlines systemd service configurations that significantly impact 
 
 # Networking
 
-### PrivateNetwork
+## PrivateNetwork
 
 Useful for preventing the service from accessing the network.
 
@@ -80,7 +80,7 @@ Useful for preventing the service from accessing the network.
 
 ---
 
-### IPAccounting
+## IPAccounting
 
 Helps in detecting unusual or unexpected network activity by a service.
 
@@ -96,8 +96,8 @@ Helps in detecting unusual or unexpected network activity by a service.
 
 ---
 
-### IPAddressAllow=ADDRESS[/PREFIXLENGTH]…,
-### IPAddressDeny=ADDRESS[/PREFIXLENGTH]…
+## IPAddressAllow=ADDRESS[/PREFIXLENGTH]…,
+## IPAddressDeny=ADDRESS[/PREFIXLENGTH]…
 
 It enables packet filtering on all IPv4 and IPv6 sockets created by the service. Useful for restricting/preventing a service to communicate only with certain IP addresses or networks.
 
@@ -117,7 +117,7 @@ It enables packet filtering on all IPv4 and IPv6 sockets created by the service.
    
 ---
 
-### RestrictNetworkInterfaces
+## RestrictNetworkInterfaces
 
 Used to control which network interfaces a service has access to. This helps isolate services from the network or restrict them to specific network interfaces, enhancing security and reducing potential risk.
 
@@ -133,7 +133,7 @@ Used to control which network interfaces a service has access to. This helps iso
 
 ---
 
-### RestrictAddressFamilies
+## RestrictAddressFamilies
 
 Used to control which address families a service can use. This setting restricts the service's ability to open sockets using specific address families, such as `'AF_INET'` for IPv4, `'AF_INET6'` for IPv6, or others. It is a security feature that helps limit the service's network capabilities and reduces its exposure to network-related vulnerabilities.
 
@@ -152,7 +152,7 @@ Used to control which address families a service can use. This setting restricts
 
 # File system
 
-### ProtectHome
+## ProtectHome
 
 Used to restrict a service's access to home directories. This security feature can be used to either completely block access to `/home`, `/root`, and `/run/user` or make them appear empty to the service, thereby protecting user data from unauthorized access by system services.
 
@@ -170,7 +170,7 @@ Used to restrict a service's access to home directories. This security feature c
 
 ---
 
-### ProtectSystem
+## ProtectSystem
 
 Controls access to the system's root directory (`/`) and other essential system directories. This setting enhances security by restricting a service's ability to modify or access critical system files and directories.
 
@@ -190,7 +190,7 @@ Using `true` or `full` is recommended for services that do not require access to
 
 ---
 
-### ProtectProc
+## ProtectProc
 
 Controls access to the `/proc` filesystem for a service. This setting enhances security by restricting a service's ability to view or manipulate processes and kernel information in the `/proc` directory.
 
@@ -208,7 +208,7 @@ Controls access to the `/proc` filesystem for a service. This setting enhances s
 
 ---
 
-### ReadWritePaths, ReadOnlyPaths, InaccessiblePaths, ExecPaths, NoExecPaths
+## ReadWritePaths, ReadOnlyPaths, InaccessiblePaths, ExecPaths, NoExecPaths
 
 Creates a new file system namespace for executed processes, enabling fine-grained control over file system access.\
 - **ReadWritePaths=**: Paths listed here are accessible with the same access modes from within the namespace as from outside it.
@@ -228,7 +228,7 @@ Creates a new file system namespace for executed processes, enabling fine-graine
 
 ---
 
-### PrivateTmp
+## PrivateTmp
 
 Uses a private, isolated `/tmp` directory for the service, enhancing security by preventing access to other processes' temporary files and ensuring data isolation.
 
@@ -246,7 +246,7 @@ Additionally, when enabled, all temporary files created by a service in these di
 
 ---
 
-### PrivateMounts
+## PrivateMounts
 
 Controls whether the service should have its own mount namespace, isolating its mounts from the rest of the system. This setup ensures that any file system mount points created or removed by the unit's processes remain private to them and are not visible to the host.
 
@@ -262,7 +262,7 @@ Controls whether the service should have its own mount namespace, isolating its 
 
 ---
 
-### ProcSubset
+## ProcSubset
 
 Restricts the set of `/proc` entries visible to the service, enhancing security by limiting access to specific process information in the `/proc` filesystem.
 
@@ -282,7 +282,7 @@ Restricts the set of `/proc` entries visible to the service, enhancing security 
 
 **NOTE:** Not applicable for the service runs as root
 
-### PrivateUsers
+## PrivateUsers
 
 Controls whether the service should run with a private set of UIDs and GIDs, isolating the user and group databases used by the unit from the rest of the system, creating a secure sandbox environment. The isolation reduces the privilege escalation potential of services.
 
@@ -298,7 +298,7 @@ Controls whether the service should run with a private set of UIDs and GIDs, iso
 
 ---
 
-### DynamicUser
+## DynamicUser
 
 Enables systemd to dynamically allocate a unique user and group ID (UID/GID) for the service at runtime, enhancing security and resource isolation. These user and group entries are managed transiently during runtime and are not added to `/etc/passwd` or `/etc/group`.
 
@@ -316,7 +316,7 @@ Enables systemd to dynamically allocate a unique user and group ID (UID/GID) for
 
 # Devices 
 
-### PrivateDevices
+## PrivateDevices
 
 Controls whether the service should have access to device nodes in `/dev`. 
 
@@ -332,7 +332,7 @@ Controls whether the service should have access to device nodes in `/dev`.
    
 ---
 
-### DeviceAllow
+## DeviceAllow
 
 Specifies individual device access rules for the service, allowing fine-grained control over device permissions.
 
@@ -349,7 +349,7 @@ Specifies individual device access rules for the service, allowing fine-grained 
 
 # Kernel
 
-### ProtectKernelTunables
+## ProtectKernelTunables
 
 Controls whether the service is allowed to modify tunable kernel variables in `/proc/sys`, enhancing security by restricting access to critical kernel parameters.
 
@@ -365,7 +365,7 @@ Controls whether the service is allowed to modify tunable kernel variables in `/
 
 ---
 
-### ProtectKernelModules
+## ProtectKernelModules
 
 Controls whether the service is allowed to load or unload kernel modules, enhancing security by restricting module management capabilities.
 
@@ -381,7 +381,7 @@ Controls whether the service is allowed to load or unload kernel modules, enhanc
 
 ---
 
-### ProtectKernelLogs
+## ProtectKernelLogs
 
 Controls whether the service is allowed to access kernel log messages, enhancing security by restricting access to kernel logs.
 
@@ -399,7 +399,7 @@ Controls whether the service is allowed to access kernel log messages, enhancing
 
 # Misc
 
-### Delegate
+## Delegate
 
 Controls whether systemd should delegate further control of resource management to the service's own resource management settings.
 
@@ -415,7 +415,7 @@ Controls whether systemd should delegate further control of resource management 
 
 ---
 
-### KeyringMode
+## KeyringMode
 
 Specifies the handling mode for session keyrings by the service, controlling how it manages encryption keys and credentials.
 
@@ -432,7 +432,7 @@ Specifies the handling mode for session keyrings by the service, controlling how
 
 ---
   
-### NoNewPrivileges
+## NoNewPrivileges
 
 Controls whether the service and its children processes are allowed to gain new privileges (capabilities).
 
@@ -450,7 +450,7 @@ Some configurations may override this setting and ignore its value.
 
 ---
 
-### UMask
+## UMask
 
 Sets the file mode creation mask (umask) for the service, controlling the default permissions applied to newly created files and directories.
 
@@ -464,7 +464,7 @@ Sets the file mode creation mask (umask) for the service, controlling the defaul
 
 ---
 
-### ProtectHostname
+## ProtectHostname
 
 Controls whether the service can modify its own hostname.
 
@@ -480,7 +480,7 @@ Controls whether the service can modify its own hostname.
 
 ---
 
-### ProtectClock
+## ProtectClock
 
 Controls whether the service is allowed to manipulate the system clock.
 
@@ -497,7 +497,7 @@ Controls whether the service is allowed to manipulate the system clock.
 
 ---
 
-### ProtectControlGroups
+## ProtectControlGroups
 
 Controls whether the service is allowed to modify control groups (cgroups) settings.
 
@@ -513,7 +513,7 @@ Controls whether the service is allowed to modify control groups (cgroups) setti
 
 ---
 
-### RestrictNamespaces
+## RestrictNamespaces
 
 Controls the namespace isolation settings for the service, restricting or allowing namespace access.
 
@@ -530,7 +530,7 @@ Controls the namespace isolation settings for the service, restricting or allowi
 
 ---
 
-### LockPersonality
+## LockPersonality
 
 Applies restriction on the service's ability to change its execution personality.
 
@@ -546,7 +546,7 @@ Applies restriction on the service's ability to change its execution personality
    
 ---
 
-### MemoryDenyWriteExecute
+## MemoryDenyWriteExecute
 
 Controls whether the service is allowed to execute code from writable memory pages.
 
@@ -562,7 +562,7 @@ Controls whether the service is allowed to execute code from writable memory pag
 
 ---
 
-### RestrictRealtime
+## RestrictRealtime
 
 Controls whether the service is allowed to utilize real-time scheduling policies.
 
@@ -578,7 +578,7 @@ Controls whether the service is allowed to utilize real-time scheduling policies
 
 ---
 
-### RestrictSUIDSGID
+## RestrictSUIDSGID
 
 Controls whether the service is allowed to execute processes with SUID and SGID privileges.
 
@@ -594,7 +594,7 @@ Controls whether the service is allowed to execute processes with SUID and SGID 
 
 ---
 
-### RemoveIPC
+## RemoveIPC
 
 Controls whether to remove inter-process communication (IPC) resources associated with the service upon its termination.
 
@@ -610,7 +610,7 @@ Controls whether to remove inter-process communication (IPC) resources associate
 
 ---
  
-### SystemCallArchitectures
+## SystemCallArchitectures
 
 Specifies the allowed system call architectures for the service to include in system call filter.
 
@@ -625,7 +625,7 @@ Specifies the allowed system call architectures for the service to include in sy
   
 ---
 
-### NotifyAccess
+## NotifyAccess
 
 Specifies how the service can send service readiness notification signals.
 
@@ -645,7 +645,7 @@ Specifies how the service can send service readiness notification signals.
 
 # Capabilities 
 
-### AmbientCapabilities
+## AmbientCapabilities
 
 Specifies which capabilities to include in the ambient capability set for the service, which are inherited by all processes within the service.
 
@@ -666,7 +666,7 @@ This option can be specified multiple times to merge capability sets.
 
 ---
 
-### CapabilityBoundingSet
+## CapabilityBoundingSet
 
 Specifies the bounding set of capabilities for the service, limiting the capabilities available to processes within the service.
 
@@ -679,7 +679,7 @@ Specifies the bounding set of capabilities for the service, limiting the capabil
 
 [CapabilityBoundingSet](https://www.freedesktop.org/software/systemd/man/systemd.exec.html#CapabilityBoundingSet=)
 
-#### Available Options:
+### Available Options:
 **Capability** | **Description**
 --- | --
 **CAP_AUDIT_CONTROL** | Allows processes to control kernel auditing behavior, including enabling and disabling auditing, and changing audit rules.
@@ -724,7 +724,7 @@ Specifies the bounding set of capabilities for the service, limiting the capabil
 
 # System calls 
 
-### SystemCallFilter
+## SystemCallFilter
 
 Specifies a system call filter for the service, restricting the types of system calls that processes within the service can make.
 
@@ -739,7 +739,7 @@ Predefined sets of system calls are available, starting with "@" followed by the
 
 [SystemCallFilter](https://www.freedesktop.org/software/systemd/man/systemd.exec.html#SystemCallFilter=)
 
-#### Set	Description:
+### Set	Description:
 **Filter Set** | **Description**
 --- | ---
 **@clock** | Allows clock and timer-related system calls, such as clock_gettime, nanosleep, etc. This is essential for time-related operations.
