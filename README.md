@@ -2,6 +2,9 @@
     Copyright 2022-2024 TII (SSRC) and the Ghaf contributors
     SPDX-License-Identifier: CC-BY-SA-4.0
 -->
+<style>
+c { colot: Cyan }
+</style>
 
 This document outlines systemd service configurations that significantly impact a service's exposure. These configurations can be utilized to enhance the security of a systemd service.
 
@@ -64,7 +67,7 @@ This document outlines systemd service configurations that significantly impact 
 
 # Networking
 
-### PrivateNetwork
+<c>### PrivateNetwork</c>
 
 Useful for preventing the service from accessing the network.
 
@@ -232,12 +235,15 @@ Creates a new file system namespace for executed processes, enabling fine-graine
 
 ### PrivateTmp
 
-**Type**:
+Uses a private, isolated `/tmp` directory for the service, enhancing security by preventing access to other processes' temporary files and ensuring data isolation.
 
-**Default**:
+**Type**: *Boolean.*
 
-A boolean argument. Defaults to `false`.
-If enabled, sets up a new file system namespace for executed processes and mounts private `/tmp/` and `/var/tmp/` directories inside it. These directories are not shared with processes outside of the namespace. This enhances security by isolating temporary files of the process, but prevents sharing between processes via `/tmp/` or `/var/tmp/`.
+**Default**: `false`. If not specified, the service shares the system `/tmp` directory with other processes.
+
+**Options**:
+- **`true`**: Enables private `/tmp` for the service, isolating its temporary files from other processes.
+- **`false`**: The service shares the system `/tmp` directory with other processes.
 
 Additionally, when enabled, all temporary files created by a service in these directories will be automatically removed after the service is stopped.
 
@@ -247,27 +253,31 @@ Additionally, when enabled, all temporary files created by a service in these di
 
 ### PrivateMounts
 
-**Type**:
+Controls whether the service should have its own mount namespace, isolating its mounts from the rest of the system. This setup ensures that any file system mount points created or removed by the unit's processes remain private to them and are not visible to the host.
 
-**Default**:
+**Type**: *Boolean.*
 
-A boolean parameter. Defaults to `off`.
-If enabled, the processes of this unit will run in their own private file system (mount) namespace, where all mount propagation from the unit's processes to the host's main file system namespace is disabled. This setup ensures that any file system mount points created or removed by the unit's processes remain private to them and are not visible to the host.
+**Default**: `false`. If not specified, the service shares the same mount namespace as other processes.
 
-However, mount points established or removed on the host will still be propagated to the unit's processes.
-
+**Options**:
+- **`true`**: Enables private mount namespace for the service, isolating its mounts from the rest of the system.
+- **`false`**: The service shares the same mount namespace as other processes.
+  
 [PrivateMounts](https://www.freedesktop.org/software/systemd/man/systemd.exec.html#PrivateMounts=)
 
 ---
 
 ### ProcSubset
 
-**Type**:
+Restricts the set of `/proc` entries visible to the service, enhancing security by limiting access to specific process information in the `/proc` filesystem.
 
-**Default**:
+**Type**: *string*
 
-**Options:** `all` (the default), `pid`
-If set to `pid`, all files and directories that are not directly associated with process management and introspection are hidden in the `/proc` file system configured for the unit's processes. This setting controls the `subset=` mount option of the `procfs` instance for the unit.
+**Default**: `all`. If not specified, the service has access to all `/proc` entries.
+
+**Options**:
+- **`all`**: Allows the service access to all `/proc` entries.
+- **`pid`**: Restricts the service to only its own process information (`/proc/self`, `/proc/thread-self/` ).
 
 [ProcSubset](https://www.freedesktop.org/software/systemd/man/systemd.exec.html#ProcSubset=)
 
@@ -279,13 +289,15 @@ If set to `pid`, all files and directories that are not directly associated with
 
 ### PrivateUsers
 
-**Type**:
+Controls whether the service should run with a private set of UIDs and GIDs, isolating the user and group databases used by the unit from the rest of the system, creating a secure sandbox environment. The isolation reduces the privilege escalation potential of services.
 
-**Default**:
+**Type**: *Boolean.*
 
-A boolean argument. When set to true, it establishes a new user namespace for the executed processes and configures minimal user and group mappings. This mapping includes the "root" user and group, as well as the unit's own user and group, mapping them to themselves, and mapping all other users and groups to the "nobody" user and group. This setup effectively isolates the user and group databases used by the unit from the rest of the system, creating a secure sandbox environment.
+**Default**: `false`. If not specified, the service runs with the same user and group IDs as other processes.
 
-In this mode, all files, directories, processes, IPC objects, and other resources owned by users or groups other than `root` or the unit's own are visible from within the unit but appear as owned by the `nobody` user and group. Processes run without privileges in the host's user namespace, meaning they have zero process capabilities in the host's user namespace but retain full capabilities within the service's user namespace.
+**Options**:
+- **`true`**: Enables private user and group IDs for the service by creating a new user namespace, isolating them from the rest of the system.
+- **`false`**: The service runs with the same user and group IDs as other processes.
 
 [PrivateUsers=](https://www.freedesktop.org/software/systemd/man/systemd.exec.html#PrivateUsers=)
 
@@ -293,11 +305,15 @@ In this mode, all files, directories, processes, IPC objects, and other resource
 
 ### DynamicUser
 
-**Type**:
+Enables systemd to dynamically allocate a unique user and group ID (UID/GID) for the service at runtime, enhancing security and resource isolation. These user and group entries are managed transiently during runtime and are not added to `/etc/passwd` or `/etc/group`.
 
-**Default**:
+**Type**: *Boolean.*
 
-A boolean parameter. Defaults to off. When set to true, a UNIX user and group pair are dynamically allocated when the unit is started and released as soon as it is stopped. These user and group entries are managed transiently during runtime and are not added to `/etc/passwd` or `/etc/group`.
+**Default**: `false`. If not specified, the service uses a static user and group ID defined in the service unit file or defaults to `root`.
+
+**Options**:
+- **`true`**: A UNIX user and group pair are dynamically allocated when the unit is started and released as soon as it is stopped.
+- **`false`**: The service uses a static UID/GID defined in the service unit file or defaults to `root`.
 
 [DynamicUser](https://www.freedesktop.org/software/systemd/man/systemd.exec.html#DynamicUser=)
 
@@ -307,27 +323,30 @@ A boolean parameter. Defaults to off. When set to true, a UNIX user and group pa
 
 ### PrivateDevices
 
-**Type**:
+Controls whether the service should have access to device nodes in `/dev`. 
 
-**Default**:
+**Type**: *Boolean.*
 
-A boolean argument. Defaults to false. When set to true, it establishes a new `/dev/` mount for the executed processes and includes only API pseudo devices such as `/dev/null`, `/dev/zero`, or `/dev/random`. Physical devices such as `/dev/sda`, system memory `/dev/mem`, system ports `/dev/port`, and others are not added to this mount. This setup is useful for disabling physical device access by the executed process.
+**Default**: `false`. If not specified, the service has access to device nodes in `/dev`.
 
-Enabling this option installs a system call filter that blocks low-level I/O system calls categorized in the `@raw-io` set.
-
+**Options**:
+- **`true`**: Restricts the service's access to device nodes in `/dev` by creating a new `/dev/` mount for the executed processes and includes only pseudo devices such as `/dev/null`, `/dev/zero`, or `/dev/random`. Physical devices are not added to this mount. This setup is useful for disabling physical device access by the service.
+- **`false`**: The service has access to device nodes in `/dev`.
+  
 [PrivateDevices](https://www.freedesktop.org/software/systemd/man/systemd.exec.html#PrivateDevices=)
    
 ---
 
 ### DeviceAllow
 
-**Type**:
+Specifies individual device access rules for the service, allowing fine-grained control over device permissions.
 
-**Default**:
+**Type**: *Space-separated list of device access rules.*
 
-Controls access to specific device nodes by the executed processes using eBPF filtering. It accepts two space-separated strings: a device node specifier followed by a combination of `r`, `w`, `m` to control reading, writing, or creating (mknod) operations on the specified device nodes by the unit.
+**Default**: None. If not specified, the service does not have specific device access rules defined.
 
-To disallow access to all physical devices, consider using `PrivateDevices=` instead.
+**Options**:
+- Specify device access rules in the format: `<device path> <permission>` where `<permission>` can be `r` (read), `w` (write), or `m` (mknod, allowing creation of devices).
 
 [DeviceAllow](https://www.freedesktop.org/software/systemd/man/systemd.resource-control.html#DeviceAllow=)
 
@@ -337,13 +356,15 @@ To disallow access to all physical devices, consider using `PrivateDevices=` ins
 
 ### ProtectKernelTunables
 
-**Type**:
+Controls whether the service is allowed to modify tunable kernel variables in `/proc/sys`, enhancing security by restricting access to critical kernel parameters.
 
-**Default**:
+**Type**: *Boolean.*
 
-A boolean argument. Defaults to `off`. When set to `true`, kernel variables accessible through paths like */proc/sys/*, */sys/*, */proc/sysrq-trigger*, */proc/latency_stats*, */proc/acpi*, */proc/timer_stats*, */proc/fs*, and */proc/irq* are made read-only to all processes of the unit. Typically, kernel variables that are tunable should be initialized only at boot-time. Few services require runtime modifications to these variables; therefore, it is recommended to enable this setting for most services.
+**Default**: `true`. If not specified, the service is restricted from modifying kernel variables.
 
-This option is available only for system services.
+**Options**:
+- **`true`**: Restricts the service from modifying the kernel variables accessible through paths like `/proc/sys/`, `/sys/`, `/proc/sysrq-trigger`, `/proc/latency_stats`, `/proc/acpi`, `/proc/timer_stats`, `/proc/fs`, and `/proc/irq`. These paths are made read-only to all processes of the unit.
+- **`false`**: Allows the service to modify tunable kernel variables.
 
 [ProtectKernelTunables](https://www.freedesktop.org/software/systemd/man/systemd.exec.html#ProtectKernelTunables=)
 
@@ -351,15 +372,15 @@ This option is available only for system services.
 
 ### ProtectKernelModules
 
-**Type**:
+Controls whether the service is allowed to load or unload kernel modules, enhancing security by restricting module management capabilities.
 
-**Default**:
+**Type**: *Boolean.*
 
-A boolean argument. Defaults to off. When set to true, explicit module loading is denied, effectively disabling module load and unload operations on modular kernels. This setting is recommended for most services that do not require special file systems or additional kernel modules to function.
+**Default**: `true`. If not specified, the service is restricted from loading or unloading kernel modules.
 
-Enabling this option removes `CAP_SYS_MODULE` from the capability bounding set for the unit and installs a system call filter to block module system calls. Additionally, `/usr/lib/modules` is made inaccessible.
-
-This option is available only for system services.
+**Options**:
+- **`true`**: Restricts the service from loading or unloading kernel modules. It removes `CAP_SYS_MODULE` from the capability bounding set for the unit and installs a system call filter to block module system calls. `/usr/lib/modules` is also made inaccessible.
+- **`false`**: Allows the service to load or unload kernel modules in modular kernel.
 
 [ProtectKernelModules](https://www.freedesktop.org/software/systemd/man/systemd.exec.html#ProtectKernelModules=)
 
@@ -367,14 +388,16 @@ This option is available only for system services.
 
 ### ProtectKernelLogs
 
-**Type**:
+Controls whether the service is allowed to access kernel log messages, enhancing security by restricting access to kernel logs.
 
-**Default**:
+**Type**: *Boolean.*
 
-A boolean argument. Default is off. When set to true, access to the kernel log ring buffer is denied, preventing read and write operations on the buffer. This setting is recommended for most services that do not require access to the kernel log ring buffer.
+**Default**: `false`. If not specified, the service is allowed to access kernel logs.
 
-Enabling this option removes `CAP_SYSLOG` from the capability bounding set for the unit and installs a system call filter to block the syslog(2) system call. The kernel exposes its log buffer to userspace via */dev/kmsg* and */proc/kmsg*. If this setting is enabled, access to these interfaces is restricted for all processes within the unit.
-
+**Options**:
+- **`trues`**: Restricts the service from accessing kernel logs from `/proc/kmsg` and `/dev/kmsg`. Enabling this option removes `CAP_SYSLOG` from the capability bounding set for the unit and installs a system call filter to block the syslog(2) system call. 
+- **`no`**: Allows the service to access kernel logs.
+  
 [ProtectKernelLogs](https://www.freedesktop.org/software/systemd/man/systemd.exec.html#ProtectKernelLogs=)
 
 ---
@@ -383,18 +406,15 @@ Enabling this option removes `CAP_SYSLOG` from the capability bounding set for t
 
 ### Delegate
 
-**Type**:
+Controls whether systemd should delegate further control of resource management to the service's own resource management settings.
 
-**Default**:
+**Type**: *Boolean.*
 
-Enables delegation of further resource control partitioning to processes of the unit. When enabled, units can create and manage their own private subhierarchy of control groups below the unit's control group. For unprivileged services (i.e., those using the `User=` setting), the unit's control group is made accessible to the relevant user.
+**Default**: `true`. If not specified, systemd delegates control to the service's resource management settings.
 
-When this option is enabled:
-- The service manager refrains from manipulating control groups or moving processes below the unit's control group, establishing a clear ownership concept.
-
-This option takes either a boolean argument or a (possibly empty) list of control group controller names:
-- `true`: Enables delegation and activates all supported controllers for the unit, allowing its processes to manage them.
-- `false`: Disables delegation entirely.
+**Options**:
+- **`true`**: Enables delegation and activates all supported controllers for the unit, allowing its processes to manage them.
+- **`false`**: Disables delegation entirely. Systemd retains control over resource management, potentially overriding the service's settings.
 
 [Delegate](https://www.freedesktop.org/software/systemd/man/systemd.resource-control.html#Delegate=)
 
@@ -402,17 +422,16 @@ This option takes either a boolean argument or a (possibly empty) list of contro
 
 ### KeyringMode
 
-**Type**:
+Specifies the handling mode for session keyrings by the service, controlling how it manages encryption keys and credentials.
 
-**Default**:
+**Type**: *String.*
 
-**Options:** `inherit`, `private`, `shared`.
-**Default:** `private` for services of the system service manager and to inherit for non-service units and for services of the user service manager
-Specifies the kernel session keyring behavior for the service. Three options are available:
+**Default**: `private`. If not specified, the service manages its session keyrings privately.
 
-- `inherit`: No special keyring setup is performed, and the kernel's default behavior is applied.
-- `private`: Allocates a new session keyring when a service process is invoked, not linked with any user keyring. This is recommended for system services to prevent sharing key material among services running under the same system user ID.
-- `shared`: Allocates a new session keyring as for private, but links the user keyring of the user configured with `User=` into it. This allows keys assigned to the user to be requested by the unit's processes.
+**Options**:
+- **`private`**: Service manages its session keyrings privately.
+- **`shared`**: Service shares its session keyrings with other services and processes.
+- **`inherit`**: Service inherits session keyrings from its parent process or environment.
 
 [KeyringMode](https://www.freedesktop.org/software/systemd/man/systemd.exec.html#KeyringMode=)
 
@@ -420,11 +439,17 @@ Specifies the kernel session keyring behavior for the service. Three options are
   
 ### NoNewPrivileges
 
-**Type**:
+Controls whether the service and its children processes are allowed to gain new privileges (capabilities).
 
-**Default**:
+**Type**: *Boolean.*
 
-A boolean argument. Defaults to `false`. When set to `true`, ensures that the service process and all its children cannot gain new privileges through *execve()* calls. This effectively prevents any process or its descendants from escalating privileges. However, certain configurations may override this setting and ignore its value.
+**Default**: `false`. If not specified, the service and its children processes can gain new privileges.
+
+**Options**:
+- **`true`**: Prevents the service and its children processes from gaining new privileges.
+- **`false`**: Allows the service and its children processes to gain new privileges.
+
+Some configurations may override this setting and ignore its value.
 
 [NoNewPrivileges](https://www.freedesktop.org/software/systemd/man/systemd.exec.html#NoNewPrivileges=)
 
@@ -432,14 +457,13 @@ A boolean argument. Defaults to `false`. When set to `true`, ensures that the se
 
 ### UMask
 
-**Type**:
+Sets the file mode creation mask (umask) for the service, controlling the default permissions applied to newly created files and directories.
 
-**Default**:
+**Type**: *Octal numeric value.*
 
-Controls the file mode creation mask, specified in octal notation. 
+**Default**:  If not specified, inherits the default umask of the systemd service manager(0022).
 
-- Defaults to 0022 for system units.
-- For user units, the default value is inherited from the per-user service manager. To change the default mask for all user services, consider setting the `UMask=` setting of the user's `user@.service` system service instance.
+**Example**: `UMask=027`
 
 [UMask](https://www.freedesktop.org/software/systemd/man/systemd.exec.html#UMask=)
 
@@ -447,13 +471,15 @@ Controls the file mode creation mask, specified in octal notation.
 
 ### ProtectHostname
 
-**Type**:
+Controls whether the service can modify its own hostname.
 
-**Default**:
+**Type**: *Boolean.*
 
-A boolean argument. Defaults to off. When enabled, sets up a new UTS namespace for the executed processes. Additionally, it prevents changes to the hostname or domainname.
+**Default**: `false`
 
-This option is available only for system services.
+**Options**:
+- **`true`**: Sets up a new UTS namespace for the executed processes. It prevents changes to the hostname or domainname.
+- **`false`**: Allows the service to modify its own hostname.
 
 [ProtectHostname](https://www.freedesktop.org/software/systemd/man/systemd.exec.html#ProtectHostname=)
 
@@ -461,20 +487,16 @@ This option is available only for system services.
 
 ### ProtectClock
 
+Controls whether the service is allowed to manipulate the system clock.
+
+**Type**: *Boolean.*
+
+**Default**: `false`.
+
+**Options**:
+- **`true`**: Prevents the service from manipulating the system clock. It removes `CAP_SYS_TIME` and `CAP_WAKE_ALARM` from the capability bounding set for this unit. Also creates a system call filter to block calls that can manipulate the system clock.
+- **`false`**: Allows the service to manipulate the system clock.
 **Type**:
-
-**Default**:
-
-A boolean argument. Defaults to off. When enabled, denies writes to the hardware clock or system clock.
-
-Enabling this option:
-- Removes `CAP_SYS_TIME` and `CAP_WAKE_ALARM` from the capability bounding set for this unit.
-- Installs a system call filter to block calls that can set the clock.
-- Implies `DeviceAllow=char-rtc r`.
-
-It is recommended to enable this setting for most services that do not need to modify the clock or check its state.
-
-This option is available only for system services.
 
 [ProtectClock](https://www.freedesktop.org/software/systemd/man/systemd.exec.html#ProtectClock=)
 
@@ -482,19 +504,15 @@ This option is available only for system services.
 
 ### ProtectControlGroups
 
-**Type**:
+Controls whether the service is allowed to modify control groups (cgroups) settings.
 
-**Default**:
+**Type**: *Boolean.*
 
-A boolean argument. Defaults to off. When set to true, makes the Linux Control Groups (cgroups(7)) hierarchies accessible through `/sys/fs/cgroup/` read-only to all processes of the unit.
+**Default**: `false`
 
-Enabling this option:
-- Ensures that processes within the unit cannot modify cgroups hierarchies.
-- Helps in maintaining system stability and resource control integrity.
-
-It is recommended to enable this setting for most services.
-
-This option is available only for system services.
+**Options**:
+- **`true`**: Prevents the service from modifying cgroups settings. Makes the Linux Control Groups (cgroups(7)) hierarchies accessible through `/sys/fs/cgroup/` read-only to all processes of the unit.
+- **`false`**: Allows the service to modify cgroups settings.
 
 [ProtectControlGroups](https://www.freedesktop.org/software/systemd/man/systemd.exec.html#ProtectControlGroups=)
 
