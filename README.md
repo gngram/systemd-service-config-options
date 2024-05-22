@@ -2,9 +2,6 @@
     Copyright 2022-2024 TII (SSRC) and the Ghaf contributors
     SPDX-License-Identifier: CC-BY-SA-4.0
 -->
-<style>
-c { colot: Cyan }
-</style>
 
 This document outlines systemd service configurations that significantly impact a service's exposure. These configurations can be utilized to enhance the security of a systemd service.
 
@@ -67,7 +64,7 @@ This document outlines systemd service configurations that significantly impact 
 
 # Networking
 
-<c>### PrivateNetwork</c>
+### PrivateNetwork
 
 Useful for preventing the service from accessing the network.
 
@@ -78,7 +75,6 @@ Useful for preventing the service from accessing the network.
 **Options**:
 
 - `true` : Creates a new network namespace for the service. Only the loopback device "lo" is available in this namespace, other network devices are not accessible.
-
 - `false` : The service will use the host's network namespace, it can access all the network devices available on host. It can communicate over the network like any other process running on host.
 
 [PrivateNetwork](https://www.freedesktop.org/software/systemd/man/systemd.exec.html#PrivateNetwork=)
@@ -520,16 +516,16 @@ Controls whether the service is allowed to modify control groups (cgroups) setti
 
 ### RestrictNamespaces
 
-**Type**:
+Controls the namespace isolation settings for the service, restricting or allowing namespace access.
 
-**Default**:
+**Type**: *Boolean* or *space-separated list of namespace type identifiers*.
 
-A boolean argument, or a space-separated list of namespace type identifiers. Defaults to `false`.
+**Default**: `false`.
 
-Controls access to Linux namespace functionality for the processes of this unit:
+**Options**:
 - `false`: No restrictions on namespace creation and switching are imposed.
 - `true`: Prohibits access to any kind of namespacing.
-- Otherwise: Specifies a space-separated list of namespace type identifiers, which can include `cgroup`, `ipc`, `net`, `mnt`, `pid`, `user`, and `uts`.
+- Otherwise: Specifies a space-separated list of namespace type identifiers, which can include `cgroup`, `ipc`, `net`, `mnt`, `pid`, `user`, and `uts`. When the namespace identifier is prefixed with '~', it inverts the action. 
 
 [RestrictNamespaces](https://www.freedesktop.org/software/systemd/man/systemd.exec.html#RestrictNamespaces=)
 
@@ -537,15 +533,15 @@ Controls access to Linux namespace functionality for the processes of this unit:
 
 ### LockPersonality
 
-**Type**:
+Applies restriction on the service's ability to change its execution personality.
 
-**Default**:
+**Type**: *Boolean.*
 
-A boolean argument. Defaults to `false`.
+**Default**: `false`
 
-When enabled, locks down the personality system call, preventing changes to the kernel execution domain from the default or from the personality selected with the `Personality=` directive. This restriction can enhance security as unusual personality emulations may be inadequately tested and could potentially introduce vulnerabilities.
-
-If the service runs in user mode or in system mode without the `CAP_SYS_ADMIN` capability (e.g., setting `User=`), enabling this option implies `NoNewPrivileges=yes`.
+**Options**:
+- **`true`**: Prevents the service from changing its execution personality. If the service runs in user mode or in system mode without the `CAP_SYS_ADMIN` capability (e.g., setting `User=`), enabling this option implies `NoNewPrivileges=yes`.
+- **`false`**: Allows the service to change its execution personality.
 
 [LockPersonality](https://www.freedesktop.org/software/systemd/man/systemd.exec.html#LockPersonality=)
    
@@ -553,13 +549,15 @@ If the service runs in user mode or in system mode without the `CAP_SYS_ADMIN` c
 
 ### MemoryDenyWriteExecute
 
-**Type**:
+Controls whether the service is allowed to execute code from writable memory pages.
 
-**Default**:
+**Type**: *Boolean.*
 
-A boolean argument. Defaults to `false`.
+**Default**: `false`.
 
-When enabled, prohibits attempts to create memory mappings that are writable and executable simultaneously, change existing memory mappings to become executable, or map shared memory segments as executable. This restriction is implemented by adding an appropriate system call filter.
+**Options**:
+- **`true`**: Prohibits attempts to create memory mappings that are writable and executable simultaneously, change existing memory mappings to become executable, or map shared memory segments as executable. This restriction is implemented by adding an appropriate system call filter.
+- **`false`**: Allows the service to execute code from writable memory pages.
 
 [MemoryDenyWriteExecute](https://www.freedesktop.org/software/systemd/man/systemd.exec.html#MemoryDenyWriteExecute=)
 
@@ -567,15 +565,15 @@ When enabled, prohibits attempts to create memory mappings that are writable and
 
 ### RestrictRealtime
 
-**Type**:
+Controls whether the service is allowed to utilize real-time scheduling policies.
 
-**Default**:
+**Type**: *Boolean.*
 
-A boolean argument. Default is `false`.
+**Default**: `false`.
 
-When enabled, refuses any attempts to enable realtime scheduling in processes of the unit. This restriction prevents access to realtime task scheduling policies such as `SCHED_FIFO`, `SCHED_RR`, or `SCHED_DEADLINE`.
-
-If the service runs in user mode or in system mode without the `CAP_SYS_ADMIN` capability, enabling this option implies `NoNewPrivileges=yes`.
+**Options**:
+- **`true`**: Prevents the service from utilizing real-time scheduling policies. Refuses any attempts to enable realtime scheduling in processes of the unit. This restriction prevents access to realtime task scheduling policies such as `SCHED_FIFO`, `SCHED_RR`, or `SCHED_DEADLINE`.
+- **`false`**: Allows the service to utilize real-time scheduling policies.
 
 [RestrictRealtime](https://www.freedesktop.org/software/systemd/man/systemd.exec.html#RestrictRealtime=)
 
@@ -583,17 +581,15 @@ If the service runs in user mode or in system mode without the `CAP_SYS_ADMIN` c
 
 ### RestrictSUIDSGID
 
-**Type**:
+Controls whether the service is allowed to execute processes with SUID and SGID privileges.
 
-**Default**:
+**Type**: *Boolean.*
 
-A boolean argument. Defaults to `off`.
+**Default**: `false`.
 
-When enabled, denies any attempts to set the set-user-ID (SUID) or set-group-ID (SGID) bits on files or directories. These bits are used to elevate privileges and allow users to acquire the identity of other users.
-
-If the service runs in user mode or in system mode without the `CAP_SYS_ADMIN` capability, enabling this option implies `NoNewPrivileges=yes`.
-
-It is recommended to restrict the creation of SUID/SGID files to only those programs that absolutely require them due to the potential security risks associated with these mechanisms.
+**Options**:
+- **`true`**: Prevents the service from executing processes with SUID and SGID privileges. Denies any attempts to set the set-user-ID (SUID) or set-group-ID (SGID) bits on files or directories. These bits are used to elevate privileges and allow users to acquire the identity of other users.
+- **`false`**: Allows the service to execute processes with SUID and SGID privileges.
 
 [RestrictSUIDSGID](https://www.freedesktop.org/software/systemd/man/systemd.exec.html#RestrictSUIDSGID=)
 
@@ -601,15 +597,15 @@ It is recommended to restrict the creation of SUID/SGID files to only those prog
 
 ### RemoveIPC
 
-**Type**:
+Controls whether to remove inter-process communication (IPC) resources associated with the service upon its termination.
 
-**Default**:
+**Type**: *Boolean.*
 
-A boolean parameter. Defaults to `off`.
+**Default**: `false`
 
-When enabled, all **System V** and **POSIX IPC** objects owned by the user and group under which the processes of this unit are executed are removed when the unit is stopped. This includes IPC objects such as message queues, semaphore sets, and shared memory segments.
-
-This option is available only for system services.
+**Options**:
+- **`true`**: Removes IPC resources (**System V** and **POSIX IPC** objects) associated with the service upon its termination. This includes IPC objects such as message queues, semaphore sets, and shared memory segments.
+- **`false`**: Retains IPC resources associated with the service after its termination.
 
 [RemoveIPC](https://www.freedesktop.org/software/systemd/man/systemd.exec.html#RemoveIPC=)
 
@@ -617,18 +613,14 @@ This option is available only for system services.
  
 ### SystemCallArchitectures
 
-**Type**:
+Specifies the allowed system call architectures for the service to include in system call filter.
 
-**Default**:
+**Type**: *Space-separated list of architecture identifiers.*
 
-Takes a space-separated list of architecture identifiers to include in the system call filter. Defaults to an empty list, meaning no filtering is applied by default.
+**Default**: Empty list. No filtering is applied.
 
-When configured:
-- Processes of this unit will only be allowed to call native system calls and system calls specific to the architectures specified in the list.
-
-If the service runs in user mode or in system mode without the `CAP_SYS_ADMIN` capability, enabling this option implies `NoNewPrivileges=yes`.
-
-
+**Options**:
+- *List of architectures*: Processes of this unit will only be allowed to call native system calls and system calls specific to the architectures specified in the list. e.g. `native`, `x86`, `x86-64` or `arm64` etc.
 
 [SystemCallArchitectures](https://www.freedesktop.org/software/systemd/man/systemd.exec.html#SystemCallArchitectures=)
   
@@ -636,18 +628,18 @@ If the service runs in user mode or in system mode without the `CAP_SYS_ADMIN` c
 
 ### NotifyAccess
 
-**Type**:
+Specifies how the service can send service readiness notification signals.
 
-**Default**:
+**Type**: *Access specifier string.*
 
-Controls access to the service status notification socket, as accessed via the `sd_notify()` call. Takes one of the following values:
+**Default**: `none`.
+
+**Options**:
 - `none` (default): No daemon status updates are accepted from the service processes; all status update messages are ignored.
-- `main`: Only service updates sent from the main process of the service are accepted.
+- `main`: Allows sending signals using the main process identifier (PID).
 - `exec`: Only service updates sent from any main or control processes originating from one of the `Exec*=` commands are accepted.
-- `all`: All service updates from all members of the service's control group are accepted.
-
-This option should be configured to grant appropriate access to the notification socket when using `Type=notify` or `Type=notify-reload`, or when setting `WatchdogSec=`. If these options are used without explicitly configuring `NotifyAccess=`, it defaults to `main`.
-
+- `all`: Allows sending signals using any process identifier (PID).
+  
 [NotifyAccess](https://www.freedesktop.org/software/systemd/man/latest/systemd.service.html#NotifyAccess=)
 
 ---
@@ -656,17 +648,20 @@ This option should be configured to grant appropriate access to the notification
 
 ### AmbientCapabilities
 
-**Type**:
+Specifies which capabilities to include in the ambient capability set for the service, which are inherited by all processes within the service.
 
-**Default**:
+**Type**: *Space-separated list of capabilities.*
 
-Controls which capabilities to include in the ambient capability set for the executed process. Takes a whitespace-separated list of capability names, such as `CAP_SYS_ADMIN`, `CAP_DAC_OVERRIDE`, `CAP_SYS_PTRACE`. This option can be specified multiple times to merge capability sets.
+**Default**: Processes inherit ambient capabilities from their parent process or the systemd service manager unless explicitly set.
+
+**Options**:
+- *List of capabilities*: Specifies the capabilities that are set as ambient for all processes within the service.
+  
+This option can be specified multiple times to merge capability sets.
 
 - If capabilities are listed without a prefix, those capabilities are included in the ambient capability set.
 - If capabilities are prefixed with "~", all capabilities except those listed are included (inverted effect).
 - Assigning the empty string (`""`) resets the ambient capability set to empty, overriding all prior settings.
-
-
 
 [AmbientCapabilities](https://www.freedesktop.org/software/systemd/man/systemd.exec.html#AmbientCapabilities=)
 
@@ -674,20 +669,14 @@ Controls which capabilities to include in the ambient capability set for the exe
 
 ### CapabilityBoundingSet
 
-**Type**:
+Specifies the bounding set of capabilities for the service, limiting the capabilities available to processes within the service.
 
-**Default**:
+**Type**: *Space-separated list of capabilities.*
 
-A whitespace-separated list of capability names, for example, `CAP_SYS_ADMIN`, `CAP_DAC_OVERRIDE`, `CAP_SYS_PTRACE`.
+**Default**: If not explicitly specified, the bounding set of capabilities is determined by systemd defaults or the system configuration.
 
-Specifies which capabilities to include in the capability bounding set for the executed process. 
-
-- If capabilities are listed without a prefix, only those capabilities are included.
-- If capabilities are prefixed with "~", all capabilities except those listed are included (inverted effect).
-
-Note: This setting does not affect commands prefixed with "+".
-
-
+**Options**:
+- *List of capabilities*: Specifies the capabilities that are allowed for processes within the service. If capabilities are prefixed with "~", all capabilities except those listed are included (inverted effect).
 
 [CapabilityBoundingSet](https://www.freedesktop.org/software/systemd/man/systemd.exec.html#CapabilityBoundingSet=)
 
@@ -738,18 +727,16 @@ Note: This setting does not affect commands prefixed with "+".
 
 ### SystemCallFilter
 
-**Type**:
+Specifies a system call filter for the service, restricting the types of system calls that processes within the service can make.
 
-**Default**:
+**Type**: *Space-separated list of system calls.*
 
-A space-separated list of system call names. 
+**Default**: If not explicitly specified, there are no restrictions imposed by systemd on system calls.
 
-Specifies which system calls executed by unit processes are allowed. If a system call executed is not in this list, the process will be terminated with the `SIGSYS` signal (allow-listing).
+**Options**:
+- *List of system calls*: Specifies the allowed system calls for processes within the service. If the list begins with "~", the effect is inverted, meaning only the listed system calls will result in termination.
 
-- If the list begins with "~", the effect is inverted, meaning only the listed system calls will result in termination.
-- Predefined sets of system calls are available, starting with "@" followed by the name of the set.
-
-
+Predefined sets of system calls are available, starting with "@" followed by the name of the set.
 
 [SystemCallFilter](https://www.freedesktop.org/software/systemd/man/systemd.exec.html#SystemCallFilter=)
 
