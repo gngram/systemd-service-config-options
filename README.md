@@ -65,14 +65,34 @@ This document outlines systemd service configurations that significantly impact 
 # Networking
 
 ### PrivateNetwork
-A boolean argument, which defaults to false. When set to true, it establishes a new network namespace for the executed processes, configuring only the loopback network device "lo" within it. No other network devices will be accessible to the executed process. This is useful for disabling network access for the executed process.
+
+Useful for preventing the service from accessing the network.
+
+**Type**: *boolean*
+
+**Default**: `false`
+
+**Options**:
+
+- `true` : Creates a new network namespace for the service. Only the loopback device "lo" is available in this namespace, other network devices are not accessible.
+
+- `false` : The service will use the host's network namespace, it can access all the network devices available on host. It can communicate over the network like any other process running on host.
 
 [PrivateNetwork](https://www.freedesktop.org/software/systemd/man/systemd.exec.html#PrivateNetwork=)
 
 ---
 
 ### IPAccounting
-A boolean argument, which defaults to false. When set to true, it enables IPv4 and IPv6 network traffic accounting for packets sent or received by the unit. With this option enabled, all IPv4 and IPv6 sockets created by any process within the unit are tracked.
+
+Helps in detecting unusual or unexpected network activity by a service.
+
+**Type**: *boolean*
+
+**Default**: `false`
+
+**Options**:
+- `true`: Enables accounting for all IPv4 and IPv6 sockets created by the service, i.e. keeps track of the data sent and received by each socket in the service.\  
+- `false`: Disables tracking of the sockets created by the service.
 
 [IPAccounting](https://www.freedesktop.org/software/systemd/man/systemd.resource-control.html#IPAccounting=)
 
@@ -80,22 +100,53 @@ A boolean argument, which defaults to false. When set to true, it enables IPv4 a
 
 ### IPAddressAllow=ADDRESS[/PREFIXLENGTH]…,
 ### IPAddressDeny=ADDRESS[/PREFIXLENGTH]…
-Enable network traffic filtering for IP packets sent and received over `AF_INET` and `AF_INET6` sockets. Both directives accept a space-separated list of IPv4 or IPv6 addresses, each optionally suffixed with an address prefix length in bits following a "/" character. If the suffix is omitted, the address is treated as a host address.
+
+It enables packet filtering on all IPv4 and IPv6 sockets created by the service. Useful for restricting/preventing a service to communicate only with certain IP addresses or networks.
+
+**Type**: *Space separated list of ip addresses and/or a symbloc name*
+
+**Default**: All IP addresses are allowed and no IP addresses are explicitly denied.
+
+**Options**: 
+- *List of addresses*: Specify list of addresses allowed/denied e.g. `['192.168.1.8' '192.168.1.0/24']`. Any IP not explicitly allowed will be denied.
+- *Symbolic Names*: Following symbolic names can also be used.\
+    `any` :	Any host (i.e. '0.0.0.0/0 ::/0')\
+    `localhost`: All addresses on the local loopback(i.e. '127.0.0.0/8 ::1/128')\
+    `link-local`: All link-local IP addresses(i.e.'169.254.0.0/16 fe80::/64')\
+    `multicast`: All IP multicasting addresses (i.e. 224.0.0.0/4 ff00::/8)\
 
 [IPAddressAllow](https://www.freedesktop.org/software/systemd/man/systemd.resource-control.html#IPAddressAllow=)
    
 ---
 
 ### RestrictNetworkInterfaces
-Accepts a space-separated list of network interface names. This option restricts the network interfaces that the processes of this unit can access. By default, processes can only use the specified network interfaces. If the first character of the rule is "~", the restriction is inverted. Note that the loopback interface ("lo") is not treated specially and must be explicitly configured in the unit file.
+
+Used to control which network interfaces a service has access to. This helps isolate services from the network or restrict them to specific network interfaces, enhancing security and reducing potential risk.
+
+**Type**: *Space separated list of network interface names.*
+
+**Default**: The service has access to all available network interfaces unless other network restrictions are in place. 
+
+**Options**:
+- Specify individual network interface names to restrict the service to using only those interfaces.
+- Prefix an interface name with '~' to invert the restriction, i.e. denying access to that specific interface while allowing all others.
 
 [RestrictNetworkInterfaces](https://www.freedesktop.org/software/systemd/man/systemd.resource-control.html#RestrictNetworkInterfaces=)
 
 ---
 
 ### RestrictAddressFamilies
-**Options:** `none`, or a space-separated list of address family names to allow-list, such as `AF_UNIX`, `AF_PACKET`, `AF_INET`, `AF_NETLINK` or `AF_INET6`.
-This config option restricts the set of socket address families that processes of this unit can access. When set to "none", access to all address families is denied. When prefixed with "~", the listed address families act as a deny list; otherwise, they function as an allow list. It's important to note that this restriction applies specifically to the socket(2) system call. By default, no restrictions are applied, and processes can access all address families. This setting does not affect commands prefixed with "+".
+
+Used to control which address families a service can use. This setting restricts the service's ability to open sockets using specific address families, such as `'AF_INET'` for IPv4, `'AF_INET6'` for IPv6, or others. It is a security feature that helps limit the service's network capabilities and reduces its exposure to network-related vulnerabilities.
+
+**Type**: List of address family names.
+
+**Default**: If not configured, the service is allowed to use all available address families.
+
+**Options**:
+- **`none`**: Apply no restriction.
+- **Specific Address Families**: Specify one or more address families that the service is allowed to use, e.g., `'AF_INET'`, `'AF_INET6'`, `'AF_UNIX'`.
+- **Inverted Restriction**: Prepend character '~' to an address family name to deny access to it while allowing all others, e.g., `'~AF_INET'` would block IPv4 access.
    
 [RestrictAddressFamilies](https://www.freedesktop.org/software/systemd/man/systemd.exec.html#RestrictAddressFamilies=)
 
@@ -104,67 +155,87 @@ This config option restricts the set of socket address families that processes o
 # File system
 
 ### ProtectHome
-Takes a boolean argument or the special values "read-only" or "tmpfs".
-**Default:** `false`
-If enabled, this directive governs access to the directories `/home/`, `/root`, and `/run/user` for processes initiated by this unit. Here’s how each setting operates:
 
-- `true`: Makes the directories `/home/`, `/root`, and `/run/user` inaccessible and empty for processes spawned by the unit.
-- `read-only`: Sets the directories `/home/`, `/root`, and `/run/user` to be read-only for processes.
-- `tmpfs`: Mounts temporary file systems on `/home/`, `/root`, and `/run/user` in read-only mode. This option is useful for hiding irrelevant home directories while allowing necessary ones to be visible when explicitly listed in `BindPaths=` or `BindReadOnlyPaths=`.
+Used to restrict a service's access to home directories. This security feature can be used to either completely block access to `/home`, `/root`, and `/run/user` or make them appear empty to the service, thereby protecting user data from unauthorized access by system services.
 
-Enabling this setting is recommended for all long-running services, especially those exposed to the network, to prevent inadvertent access to private user data unless explicitly required by the service. This setting is implicitly enabled if `DynamicUser=` is set.
+**Type**: *Boolean or string.*
 
-Please note, this option is available only for system services or services running within per-user instances of the service manager where `PrivateUsers=` is implicitly enabled.
+**Default**: `false` i.e. the service has full access to home directories unless restricted by some other mean.
 
+**Options**:
+- **`true`**: The service is completely denied access to home directories.
+- **`false`**: The service has unrestricted access to home directories.
+- **`read-only`**: The service can view the contents of home directories but cannot modify them.
+- **`tmpfs`**: Mounts a temporary filesystem in place of home directories, ensuring the service cannot access or modify the actual user data. Adding the tmpfs option provides a flexible approach by creating a volatile in-memory filesystem where the service believes it has access to home but any changes it makes do not affect the actual data and are lost when the service stops. This is particularly useful for services that require a temporary space in home.
+  
 [ProtectHome](https://www.freedesktop.org/software/systemd/man/systemd.exec.html#ProtectHome=)
 
 ---
 
 ### ProtectSystem
-A boolean argument or the special values `full` or `strict`.
-**Default:** `false`.
-If enabled, this directive controls the read-only mounting of critical directories for processes initiated by this unit. Here's how each setting functions:
 
-   - `true`: Mounts the directories `/usr/`, `/boot`, and `/efi` read-only for processes.
-   - `full`: Additionally mounts the `/etc/` directory read-only.
-   - `strict`: Mounts the entire file system hierarchy read-only, except for essential API file system subtrees like `/dev/`, `/proc/`, and `/sys/`.
+Controls access to the system's root directory (`/`) and other essential system directories. This setting enhances security by restricting a service's ability to modify or access critical system files and directories.
 
-It is advisable to enable this setting for all long-running services, except those involved in system updates or requiring modifications to the operating system. When enabled, specific directories can be excluded from being made read-only using ReadWritePaths=. This setting is implicitly enabled if DynamicUser= is set.
+**Type**: *Boolean or string.*
 
-Please note, while this setting enhances security by limiting write access to critical system directories, it may not provide complete protection in all scenarios and shares similar limitations as ReadOnlyPaths=.
+**Default**: `full` (Equivalent to `true`). The service is restricted from modifying or accessing critical system directories.
+
+**Options**:
+- **`true`**: Mounts the directories `/usr/`, `/boot`, and `/efi` read-only for processes.
+- **`full`**: Additionally mounts the `/etc/` directory read-only.
+- **`strict`**: Mounts the entire file system hierarchy read-only, except for essential API file system subtrees like `/dev/`, `/proc/`, and `/sys/`.
+- **`false`**: Allows the service unrestricted access to system directories.
+
+Using `true` or `full` is recommended for services that do not require access to system directories to enhance security and stability.
 
 [ProtectSystem](https://www.freedesktop.org/software/systemd/man/systemd.exec.html#ProtectSystem=)
 
 ---
 
 ### ProtectProc
-**Options:** `noaccess`, `invisible`, `ptraceable` or `default` (which it defaults to).
-This setting controls the "hidepid=" mount option of the "procfs" instance for the unit, which determines the visibility and accessibility of directories containing process metadata (`/proc/PID*`):
 
-- `noaccess`: Restricts access to most process metadata of other users in `/proc`.
-- `invisible`: Hides processes owned by other users from view in `/proc`.
-- `ptraceable`: Hides processes that cannot be traced (`ptrace()`) by other processes.
-- `default`: Imposes no restrictions on access or visibility to `/proc`.
+Controls access to the `/proc` filesystem for a service. This setting enhances security by restricting a service's ability to view or manipulate processes and kernel information in the `/proc` directory.
 
-This option is applicable only to system services.
+**Type**: *Boolean or string.*
 
+**Default**: `default`. No restriction is imposed from viewing or manipulating processes and kernel information in `/proc`.
+
+**Options**:
+- **`noaccess`**: Restricts access to most process metadata of other users in `/proc`.
+- **`invisible`**: Hides processes owned by other users from view in `/proc`.
+- **`ptraceable`**: Hides processes that cannot be traced (`ptrace()`) by other processes.
+- **`default`**: Imposes no restrictions on access or visibility to `/proc`.
+  
 [ProtectProc](https://www.freedesktop.org/software/systemd/man/systemd.exec.html#ProtectProc=)
 
 ---
 
 ### ReadWritePaths, ReadOnlyPaths, InaccessiblePaths, ExecPaths, NoExecPaths
-Creates a new file system namespace for executed processes, enabling fine-grained control over file system access. Each setting accepts a space-separated list of paths relative to the host's root directory (i.e., the system running the service manager). If paths contain symlinks, they are resolved relative to the root directory specified by `RootDirectory=` or `RootImage=`.
 
+Creates a new file system namespace for executed processes, enabling fine-grained control over file system access.\
 - **ReadWritePaths=**: Paths listed here are accessible with the same access modes from within the namespace as from outside it.
 - **ReadOnlyPaths=**: Allows reading from listed paths only; write attempts are refused even if file access controls would otherwise permit it.
 - **InaccessiblePaths=**: Makes listed paths and everything below them in the file system hierarchy inaccessible to processes within the namespace.
 - **NoExecPaths=**: Prevents execution of files from listed paths, overriding usual file access controls. Nest `ExecPaths=` within `NoExecPaths=` to selectively allow execution within directories otherwise marked non-executable.
+
+**Type**: *Space separated list of paths.*
+
+**Default**: No restriction to file system access until unless restricted by some other mechanism.
+
+**Options**:
+
+**Space separated list of paths** : Space-separated list of paths relative to the host's root directory. Symlinks are resolved relative to the root directory specified by `RootDirectory=` or `RootImage=`.
 
 [ReadWritePaths](https://www.freedesktop.org/software/systemd/man/systemd.exec.html#ReadWritePaths=)
 
 ---
 
 ### PrivateTmp
+
+**Type**:
+
+**Default**:
+
 A boolean argument. Defaults to `false`.
 If enabled, sets up a new file system namespace for executed processes and mounts private `/tmp/` and `/var/tmp/` directories inside it. These directories are not shared with processes outside of the namespace. This enhances security by isolating temporary files of the process, but prevents sharing between processes via `/tmp/` or `/var/tmp/`.
 
@@ -175,6 +246,11 @@ Additionally, when enabled, all temporary files created by a service in these di
 ---
 
 ### PrivateMounts
+
+**Type**:
+
+**Default**:
+
 A boolean parameter. Defaults to `off`.
 If enabled, the processes of this unit will run in their own private file system (mount) namespace, where all mount propagation from the unit's processes to the host's main file system namespace is disabled. This setup ensures that any file system mount points created or removed by the unit's processes remain private to them and are not visible to the host.
 
@@ -185,6 +261,11 @@ However, mount points established or removed on the host will still be propagate
 ---
 
 ### ProcSubset
+
+**Type**:
+
+**Default**:
+
 **Options:** `all` (the default), `pid`
 If set to `pid`, all files and directories that are not directly associated with process management and introspection are hidden in the `/proc` file system configured for the unit's processes. This setting controls the `subset=` mount option of the `procfs` instance for the unit.
 
@@ -197,6 +278,11 @@ If set to `pid`, all files and directories that are not directly associated with
 **NOTE:** Not applicable for the service runs as root
 
 ### PrivateUsers
+
+**Type**:
+
+**Default**:
+
 A boolean argument. When set to true, it establishes a new user namespace for the executed processes and configures minimal user and group mappings. This mapping includes the "root" user and group, as well as the unit's own user and group, mapping them to themselves, and mapping all other users and groups to the "nobody" user and group. This setup effectively isolates the user and group databases used by the unit from the rest of the system, creating a secure sandbox environment.
 
 In this mode, all files, directories, processes, IPC objects, and other resources owned by users or groups other than `root` or the unit's own are visible from within the unit but appear as owned by the `nobody` user and group. Processes run without privileges in the host's user namespace, meaning they have zero process capabilities in the host's user namespace but retain full capabilities within the service's user namespace.
@@ -206,6 +292,11 @@ In this mode, all files, directories, processes, IPC objects, and other resource
 ---
 
 ### DynamicUser
+
+**Type**:
+
+**Default**:
+
 A boolean parameter. Defaults to off. When set to true, a UNIX user and group pair are dynamically allocated when the unit is started and released as soon as it is stopped. These user and group entries are managed transiently during runtime and are not added to `/etc/passwd` or `/etc/group`.
 
 [DynamicUser](https://www.freedesktop.org/software/systemd/man/systemd.exec.html#DynamicUser=)
@@ -215,6 +306,11 @@ A boolean parameter. Defaults to off. When set to true, a UNIX user and group pa
 # Devices 
 
 ### PrivateDevices
+
+**Type**:
+
+**Default**:
+
 A boolean argument. Defaults to false. When set to true, it establishes a new `/dev/` mount for the executed processes and includes only API pseudo devices such as `/dev/null`, `/dev/zero`, or `/dev/random`. Physical devices such as `/dev/sda`, system memory `/dev/mem`, system ports `/dev/port`, and others are not added to this mount. This setup is useful for disabling physical device access by the executed process.
 
 Enabling this option installs a system call filter that blocks low-level I/O system calls categorized in the `@raw-io` set.
@@ -224,6 +320,11 @@ Enabling this option installs a system call filter that blocks low-level I/O sys
 ---
 
 ### DeviceAllow
+
+**Type**:
+
+**Default**:
+
 Controls access to specific device nodes by the executed processes using eBPF filtering. It accepts two space-separated strings: a device node specifier followed by a combination of `r`, `w`, `m` to control reading, writing, or creating (mknod) operations on the specified device nodes by the unit.
 
 To disallow access to all physical devices, consider using `PrivateDevices=` instead.
@@ -235,6 +336,11 @@ To disallow access to all physical devices, consider using `PrivateDevices=` ins
 # Kernel
 
 ### ProtectKernelTunables
+
+**Type**:
+
+**Default**:
+
 A boolean argument. Defaults to `off`. When set to `true`, kernel variables accessible through paths like */proc/sys/*, */sys/*, */proc/sysrq-trigger*, */proc/latency_stats*, */proc/acpi*, */proc/timer_stats*, */proc/fs*, and */proc/irq* are made read-only to all processes of the unit. Typically, kernel variables that are tunable should be initialized only at boot-time. Few services require runtime modifications to these variables; therefore, it is recommended to enable this setting for most services.
 
 This option is available only for system services.
@@ -244,6 +350,11 @@ This option is available only for system services.
 ---
 
 ### ProtectKernelModules
+
+**Type**:
+
+**Default**:
+
 A boolean argument. Defaults to off. When set to true, explicit module loading is denied, effectively disabling module load and unload operations on modular kernels. This setting is recommended for most services that do not require special file systems or additional kernel modules to function.
 
 Enabling this option removes `CAP_SYS_MODULE` from the capability bounding set for the unit and installs a system call filter to block module system calls. Additionally, `/usr/lib/modules` is made inaccessible.
@@ -255,6 +366,11 @@ This option is available only for system services.
 ---
 
 ### ProtectKernelLogs
+
+**Type**:
+
+**Default**:
+
 A boolean argument. Default is off. When set to true, access to the kernel log ring buffer is denied, preventing read and write operations on the buffer. This setting is recommended for most services that do not require access to the kernel log ring buffer.
 
 Enabling this option removes `CAP_SYSLOG` from the capability bounding set for the unit and installs a system call filter to block the syslog(2) system call. The kernel exposes its log buffer to userspace via */dev/kmsg* and */proc/kmsg*. If this setting is enabled, access to these interfaces is restricted for all processes within the unit.
@@ -266,6 +382,11 @@ Enabling this option removes `CAP_SYSLOG` from the capability bounding set for t
 # Misc
 
 ### Delegate
+
+**Type**:
+
+**Default**:
+
 Enables delegation of further resource control partitioning to processes of the unit. When enabled, units can create and manage their own private subhierarchy of control groups below the unit's control group. For unprivileged services (i.e., those using the `User=` setting), the unit's control group is made accessible to the relevant user.
 
 When this option is enabled:
@@ -280,6 +401,11 @@ This option takes either a boolean argument or a (possibly empty) list of contro
 ---
 
 ### KeyringMode
+
+**Type**:
+
+**Default**:
+
 **Options:** `inherit`, `private`, `shared`.
 **Default:** `private` for services of the system service manager and to inherit for non-service units and for services of the user service manager
 Specifies the kernel session keyring behavior for the service. Three options are available:
@@ -293,6 +419,11 @@ Specifies the kernel session keyring behavior for the service. Three options are
 ---
   
 ### NoNewPrivileges
+
+**Type**:
+
+**Default**:
+
 A boolean argument. Defaults to `false`. When set to `true`, ensures that the service process and all its children cannot gain new privileges through *execve()* calls. This effectively prevents any process or its descendants from escalating privileges. However, certain configurations may override this setting and ignore its value.
 
 [NoNewPrivileges](https://www.freedesktop.org/software/systemd/man/systemd.exec.html#NoNewPrivileges=)
@@ -300,6 +431,11 @@ A boolean argument. Defaults to `false`. When set to `true`, ensures that the se
 ---
 
 ### UMask
+
+**Type**:
+
+**Default**:
+
 Controls the file mode creation mask, specified in octal notation. 
 
 - Defaults to 0022 for system units.
@@ -310,6 +446,11 @@ Controls the file mode creation mask, specified in octal notation.
 ---
 
 ### ProtectHostname
+
+**Type**:
+
+**Default**:
+
 A boolean argument. Defaults to off. When enabled, sets up a new UTS namespace for the executed processes. Additionally, it prevents changes to the hostname or domainname.
 
 This option is available only for system services.
@@ -319,6 +460,11 @@ This option is available only for system services.
 ---
 
 ### ProtectClock
+
+**Type**:
+
+**Default**:
+
 A boolean argument. Defaults to off. When enabled, denies writes to the hardware clock or system clock.
 
 Enabling this option:
@@ -335,6 +481,11 @@ This option is available only for system services.
 ---
 
 ### ProtectControlGroups
+
+**Type**:
+
+**Default**:
+
 A boolean argument. Defaults to off. When set to true, makes the Linux Control Groups (cgroups(7)) hierarchies accessible through `/sys/fs/cgroup/` read-only to all processes of the unit.
 
 Enabling this option:
@@ -350,6 +501,11 @@ This option is available only for system services.
 ---
 
 ### RestrictNamespaces
+
+**Type**:
+
+**Default**:
+
 A boolean argument, or a space-separated list of namespace type identifiers. Defaults to `false`.
 
 Controls access to Linux namespace functionality for the processes of this unit:
@@ -362,6 +518,11 @@ Controls access to Linux namespace functionality for the processes of this unit:
 ---
 
 ### LockPersonality
+
+**Type**:
+
+**Default**:
+
 A boolean argument. Defaults to `false`.
 
 When enabled, locks down the personality system call, preventing changes to the kernel execution domain from the default or from the personality selected with the `Personality=` directive. This restriction can enhance security as unusual personality emulations may be inadequately tested and could potentially introduce vulnerabilities.
@@ -373,6 +534,11 @@ If the service runs in user mode or in system mode without the `CAP_SYS_ADMIN` c
 ---
 
 ### MemoryDenyWriteExecute
+
+**Type**:
+
+**Default**:
+
 A boolean argument. Defaults to `false`.
 
 When enabled, prohibits attempts to create memory mappings that are writable and executable simultaneously, change existing memory mappings to become executable, or map shared memory segments as executable. This restriction is implemented by adding an appropriate system call filter.
@@ -382,6 +548,11 @@ When enabled, prohibits attempts to create memory mappings that are writable and
 ---
 
 ### RestrictRealtime
+
+**Type**:
+
+**Default**:
+
 A boolean argument. Default is `false`.
 
 When enabled, refuses any attempts to enable realtime scheduling in processes of the unit. This restriction prevents access to realtime task scheduling policies such as `SCHED_FIFO`, `SCHED_RR`, or `SCHED_DEADLINE`.
@@ -393,6 +564,11 @@ If the service runs in user mode or in system mode without the `CAP_SYS_ADMIN` c
 ---
 
 ### RestrictSUIDSGID
+
+**Type**:
+
+**Default**:
+
 A boolean argument. Defaults to `off`.
 
 When enabled, denies any attempts to set the set-user-ID (SUID) or set-group-ID (SGID) bits on files or directories. These bits are used to elevate privileges and allow users to acquire the identity of other users.
@@ -406,6 +582,11 @@ It is recommended to restrict the creation of SUID/SGID files to only those prog
 ---
 
 ### RemoveIPC
+
+**Type**:
+
+**Default**:
+
 A boolean parameter. Defaults to `off`.
 
 When enabled, all **System V** and **POSIX IPC** objects owned by the user and group under which the processes of this unit are executed are removed when the unit is stopped. This includes IPC objects such as message queues, semaphore sets, and shared memory segments.
@@ -417,6 +598,11 @@ This option is available only for system services.
 ---
  
 ### SystemCallArchitectures
+
+**Type**:
+
+**Default**:
+
 Takes a space-separated list of architecture identifiers to include in the system call filter. Defaults to an empty list, meaning no filtering is applied by default.
 
 When configured:
@@ -431,6 +617,11 @@ If the service runs in user mode or in system mode without the `CAP_SYS_ADMIN` c
 ---
 
 ### NotifyAccess
+
+**Type**:
+
+**Default**:
+
 Controls access to the service status notification socket, as accessed via the `sd_notify()` call. Takes one of the following values:
 - `none` (default): No daemon status updates are accepted from the service processes; all status update messages are ignored.
 - `main`: Only service updates sent from the main process of the service are accepted.
@@ -446,6 +637,11 @@ This option should be configured to grant appropriate access to the notification
 # Capabilities 
 
 ### AmbientCapabilities
+
+**Type**:
+
+**Default**:
+
 Controls which capabilities to include in the ambient capability set for the executed process. Takes a whitespace-separated list of capability names, such as `CAP_SYS_ADMIN`, `CAP_DAC_OVERRIDE`, `CAP_SYS_PTRACE`. This option can be specified multiple times to merge capability sets.
 
 - If capabilities are listed without a prefix, those capabilities are included in the ambient capability set.
@@ -459,6 +655,11 @@ Controls which capabilities to include in the ambient capability set for the exe
 ---
 
 ### CapabilityBoundingSet
+
+**Type**:
+
+**Default**:
+
 A whitespace-separated list of capability names, for example, `CAP_SYS_ADMIN`, `CAP_DAC_OVERRIDE`, `CAP_SYS_PTRACE`.
 
 Specifies which capabilities to include in the capability bounding set for the executed process. 
@@ -518,6 +719,11 @@ Note: This setting does not affect commands prefixed with "+".
 # System calls 
 
 ### SystemCallFilter
+
+**Type**:
+
+**Default**:
+
 A space-separated list of system call names. 
 
 Specifies which system calls executed by unit processes are allowed. If a system call executed is not in this list, the process will be terminated with the `SIGSYS` signal (allow-listing).
