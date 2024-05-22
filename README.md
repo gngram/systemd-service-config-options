@@ -1,6 +1,5 @@
 <!--
-    Copyright 2022-2024 TII (SSRC) and the Ghaf contributors
-    SPDX-License-Identifier: CC-BY-SA-4.0
+    Copyright 2022-2024 gangaram
 -->
 
 This document outlines systemd service configurations that significantly impact a service's exposure. These configurations can be utilized to enhance the security of a systemd service.
