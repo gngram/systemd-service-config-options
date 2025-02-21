@@ -733,7 +733,7 @@ Specifies a system call filter for the service, restricting the types of system 
 **Default**: If not explicitly specified, there are no restrictions imposed by systemd on system calls.
 
 **Options**:
-- *List of system calls*: Specifies the allowed system calls for processes within the service. If the list begins with "~", the effect is inverted, meaning only the listed system calls will result in termination.
+- *List of system calls*: Specifies the allowed system calls(whitelisting) for processes within the service. If the list begins with "~", the effect is inverted, meaning only the listed system calls(blacklisting) will result in termination.
 
 Predefined sets of system calls are available, starting with "@" followed by the name of the set.
 
@@ -757,6 +757,105 @@ Predefined sets of system calls are available, starting with "@" followed by the
 **@syslog** | Allows syslog-related system calls, which are used for system logging.
 **@system-service** | Allows system service-related system calls, which are used for managing system services.
 **@timer** | Allows timer-related system calls, which are essential for setting and managing timers.
+
+### Understanding System Call Filtering: Whitelisting vs. Blacklisting
+
+The final list of system call filters(as seen with `systemctl show`) can be either a whitelist or a blacklist, depending on how the first entry in SystemCallFilter is defined.
+
+If the first entry starts with `~`, the final list will be a blacklist (blocking those system calls).
+Otherwise, the final list will be a whitelist (allowing only those system calls).
+
+**Example 1: Blacklist (Blocking System Calls)**
+
+```
+SystemCallFilter = [ 
+    "~mincore"
+    "@setuid"
+    "@chown"
+    "@ipc"
+    "@signal"
+    "~@clock"
+    "~@cpu-emulation"
+    "~@debug"
+]
+```
+
+The first entry (~mincore) starts with ~, meaning the final list is a blacklist.
+
+**Example 2: Whitelist (Allowing Specific System Calls)**
+
+```
+SystemCallFilter = [ 
+    "mincore"
+    "@setuid"
+    "@chown"
+    "@ipc"
+    "@signal"
+    "~@clock"
+    "~@cpu-emulation"
+    "~@debug"
+]
+```
+
+Since the first entry (mincore) does not start with ~, the final list is a whitelist.
+
+### Combination:
+
+Combination of white listing and black listing both work fine. 
+
+#### Handling Conflicting Rules:
+
+When a system call (or group) directly or indirectly appears more than once in the list, the last entry takes precedence. Below are the few `SystemCallFilter` examples used on `NixOS`:
+
+**Example 3: Overriding Rules**
+
+```
+SystemCallFilter = [ 
+    "~mincore"       # Initially blacklisted
+    "@setuid"
+    "mincore"        # Later whitelisted (takes precedence)
+    "@chown"
+    "@ipc"
+    "@signal"
+    "~@clock"
+    "~@cpu-emulation"
+    "~@debug"
+    "~@module"
+    "~@mount"
+    "~@obsolete"
+    "@system-service"
+    "~@keyring"      # Blacklisted, but...
+]
+```
+
+The first rule **~mincore** blacklists `mincore`, but a later entry **mincore** whitelists it, so `mincore` is allowed in the final list.
+The group `@keyring` is blacklisted, even though `@system-service` (which includes `@keyring`) is allowed. Later in the list **~@keyring** overrides it.
+
+The final list is a blacklist (since **~mincore** was the first entry). However, `mincore` is still allowed due to the override and `@keyring` is not allowed.
+
+**Example 4: Overriding in a Whitelist**
+
+```
+SystemCallFilter = [ 
+    "mincore"        # Initially whitelisted
+    "@setuid"
+    "~mincore"       # Later blacklisted (takes precedence)
+    "@chown"
+    "@ipc"
+    "@signal"
+    "~@clock"
+    "~@cpu-emulation"
+    "~@debug"
+    "~@module"
+    "~@mount"
+    "~@obsolete"
+    "~@keyring"      # Explicitly blacklisted
+    "@system-service"
+]
+```
+
+The first rule **mincore** whitelists it, but the later rule **~mincore** blacklists it, so `mincore` is blocked.
+The group **@keyring** is explicitly blacklisted, but later in the list **@system-service** whitelists it, so `@keyring` is allowed.
 
 
 ---
